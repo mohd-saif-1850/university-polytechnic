@@ -1,3 +1,4 @@
+// backend/app.js
 import express from "express";
 import cors from "cors";
 
@@ -12,16 +13,17 @@ app.use(
   })
 );
 
-// Root route
+// Root route for sanity check at /api
 app.get("/", (req, res) => {
   res.send("🚀 Polytechnic Store Backend is running!");
 });
 
-// Routes
+// Import your routes (keep your existing route files)
 import itemRoute from "./routes/item.route.js";
 import formRoute from "./routes/form.route.js";
 import consumedRoute from "./routes/consumed.route.js";
 
+// Base path
 app.use("/api/v1/items", itemRoute);
 app.use("/api/v1/forms", formRoute);
 app.use("/api/v1", consumedRoute);
