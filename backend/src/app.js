@@ -9,7 +9,7 @@ app.use(express.json());
 
 const allowedOrigins = [
   process.env.CORS_ORIGIN,
-  "https://your-frontend.vercel.app",
+  "https://university-polytechnic-w6k1-nqrecd9tl-msking1850s-projects.vercel.app",
   "http://localhost:5173"
 ].filter(Boolean);
 
