@@ -27,4 +27,8 @@ app.use("/api/v1/items", itemRoute);
 app.use("/api/v1/forms", formRoute);
 app.use("/api/v1", consumedRoute);
 
+// ✅ Export as serverless handler for Vercel
+import { createServer } from "http";
+import { json } from "body-parser";
+
 export default app;
