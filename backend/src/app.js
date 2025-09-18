@@ -8,7 +8,7 @@ const app = express();
 app.use(express.json());
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "*",
+    origin: [process.env.CORS_ORIGIN,"https://university-polytechnic-w6k1.vercel.app"],
     credentials: true,
   })
 );
