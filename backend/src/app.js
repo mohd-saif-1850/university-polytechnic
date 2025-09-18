@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+    origin: process.env.CORS_ORIGIN || "*",
     credentials: true,
   })
 );
@@ -22,13 +22,8 @@ import itemRoute from "./routes/item.route.js";
 import formRoute from "./routes/form.route.js";
 import consumedRoute from "./routes/consumed.route.js";
 
-// Base path
 app.use("/api/v1/items", itemRoute);
 app.use("/api/v1/forms", formRoute);
 app.use("/api/v1", consumedRoute);
-
-// ✅ Export as serverless handler for Vercel
-import { createServer } from "http";
-import { json } from "body-parser";
 
 export default app;
