@@ -10,6 +10,10 @@ app.use(cors({
   credentials: true,
 }));
 
+app.get("/", (req, res) => {
+  res.send("🚀 Polytechnic Store Backend is running!");
+});
+
 // Routes
 import itemRoute from "./routes/item.route.js";
 import formRoute from "./routes/form.route.js"
