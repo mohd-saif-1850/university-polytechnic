@@ -1,4 +1,4 @@
-// backend/app.js
+// backend/src/app.js
 import express from "express";
 import cors from "cors";
 
@@ -9,18 +9,15 @@ app.use(express.json());
 
 const allowedOrigins = [
   process.env.CORS_ORIGIN,
-  "https://university-polytechnic-w6k1-nqrecd9tl-msking1850s-projects.vercel.app",
+  "https://university-polytechnic-w6k1-f1gcyim6p-msking1850s-projects.vercel.app",
   "http://localhost:5173"
 ].filter(Boolean);
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // allow server-to-server or Postman
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true
+    origin: allowedOrigins,   // 👈 simpler: cors will handle array check
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })
 );
 
