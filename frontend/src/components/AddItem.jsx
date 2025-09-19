@@ -141,7 +141,7 @@ function Item() {
           <input
             type="text"
             placeholder="Item Name"
-            className={inputClass}
+            className="px-4 w-112 py-3 rounded-lg border border-green-200 focus:outline-none focus:ring-2 focus:ring-white bg-green-200 text-black placeholder-gray-600"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
