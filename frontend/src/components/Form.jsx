@@ -166,7 +166,7 @@ function Form() {
         {errors.message && <span className={errorClass}>{errors.message}</span>}
         {errors.submit && <div className="text-red-600 text-sm">{errors.submit}</div>}
 
-        <button type="submit" disabled={loading} className="mt-4 bg-white text-green-600 font-bold py-3 rounded-lg shadow-md hover:scale-105 transform transition duration-300">
+        <button type="submit" disabled={loading} className="mt-4 cursor-pointer bg-white text-green-600 font-bold py-3 rounded-lg shadow-md hover:scale-105 transform transition duration-300">
           {loading ? "Submitting..." : "Submit"}
         </button>
       </form>

@@ -3,9 +3,9 @@ import { createForm, deleteForm, getAllForms, updateForm } from "../controllers/
 
 const router = Router();
 
-router.route("/add-form").post(createForm);
-router.route("/update-form").patch(updateForm);
-router.route("/delete-form").delete(deleteForm);
-router.route("/get-forms").get(getAllForms);
+router.post("/add-form", createForm);
+router.patch("/update-form", updateForm);
+router.delete("/delete-form", deleteForm);
+router.get("/get-forms", getAllForms);
 
 export default router;
