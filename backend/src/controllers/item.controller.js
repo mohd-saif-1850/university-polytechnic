@@ -57,8 +57,8 @@ export const updateItem = async (req, res) => {
   try {
     const {
       itemId,
-      newName, newPrice, newQuantity, newInvoiceNumber, newMessage, newConsumable, newIsAvailable,
-      name, price, quantity, invoiceNumber, message, consumable, consumed, isAvailable, available
+      newName, newPrice, newQuantity, newInvoiceNumber, newUnitPrice , newMessage, newConsumable, newIsAvailable,
+      name, price, quantity, invoiceNumber, unitPrice, message, consumable, consumed, isAvailable, available
     } = req.body;
 
     if (!itemId) return res.status(400).json({ success: false, message: "Item ID Required !" });
@@ -70,6 +70,8 @@ export const updateItem = async (req, res) => {
 
     if (newPrice !== undefined) update.price = String(newPrice);
     else if (price !== undefined) update.price = String(price);
+
+    if (newUnitPrice !== undefined) update.unitPrice = String(newUnitPrice);
 
     if (newQuantity !== undefined) update.quantity = Number(newQuantity);
     else if (quantity !== undefined) update.quantity = Number(quantity);

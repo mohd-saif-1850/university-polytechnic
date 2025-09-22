@@ -4,6 +4,7 @@ const itemSchema = new Schema({
   name: { type: String, required: true },
   price: { type: String, required: true },
   quantity: { type: Number, required: true },
+  unitPrice : { type : Number },
   isAvailable: { type: Boolean, default: true },
   invoiceNumber: { type: String },
   consumed: { type: Boolean, default: false },
