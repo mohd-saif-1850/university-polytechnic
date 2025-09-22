@@ -16,6 +16,10 @@ function Form() {
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 
+  const safeNumber = (val) => {
+    const n = Number(val);
+    return Number.isFinite(n) ? n : 0;
+  };
 
   const fetchItems = async () => {
     try {
@@ -45,6 +49,8 @@ function Form() {
       setTotalPrice("");
       return;
     }
+    console.log(found);
+    
     const totalItemPrice = Number(found.price) || 0;
     const itemTotalQty = Number(found.quantity) || 1;
     const perUnit = itemTotalQty > 0 ? totalItemPrice / itemTotalQty : totalItemPrice;
@@ -53,77 +59,120 @@ function Form() {
     setTotalPrice(q > 0 ? (perUnit * q).toFixed(2) : "");
   }, [item, quantity, itemsList]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErrors({});
-    setSuccess("");
-    setLoading(true);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setErrors({});
+  setSuccess("");
+  setLoading(true);
 
-    if (!shop) {
-      setErrors({ shop: "Shop is required" });
+  if (!shop) {
+    setErrors({ shop: "Shop is required" });
+    setLoading(false);
+    return;
+  }
+  if (!item) {
+    setErrors({ item: "Item is required" });
+    setLoading(false);
+    return;
+  }
+  const q = Number(quantity);
+  if (!q || q <= 0) {
+    setErrors({ quantity: "Enter a valid quantity" });
+    setLoading(false);
+    return;
+  }
+
+  try {
+    const resItems = await Axios.get(`${API_URL}/items/get-items`);
+    const freshItems = resItems.data?.items || [];
+    const found = freshItems.find((i) => String(i.name).toLowerCase() === String(item).toLowerCase());
+    if (!found) {
+      setErrors({ item: "Selected item not found" });
       setLoading(false);
       return;
     }
-    if (!item) {
-      setErrors({ item: "Item is required" });
+    if (!found.isAvailable) {
+      setErrors({ item: "Selected item is not available" });
       setLoading(false);
       return;
     }
-    const q = Number(quantity);
-    if (!q || q <= 0) {
-      setErrors({ quantity: "Enter a valid quantity" });
+    if ((found.quantity || 0) < q) {
+      setErrors({ quantity: `Only ${found.quantity} available` });
       setLoading(false);
       return;
     }
+    
+    // determine per-unit price robustly
+    const perUnit = found.price / found.quantity;
+    const total = perUnit * q;
+    console.log(found.price, found.quantity);
+    
+    // include unitPrice and price when creating the form so restore can use it
+    const res = await Axios.post(`${API_URL}/forms/add-form`, {
+      shop,
+      item,
+      room: room || 0,
+      message,
+      quantity: q,
+      price: perUnit,
+      totalPrice: total,
+    });
 
-    try {
-      const resItems = await Axios.get(`${API_URL}/items/get-items`);
-      const freshItems = resItems.data?.items || [];
-      const found = freshItems.find((i) => String(i.name).toLowerCase() === String(item).toLowerCase());
-      if (!found) {
-        setErrors({ item: "Selected item not found" });
-        setLoading(false);
-        return;
-      }
-      if (!found.isAvailable) {
-        setErrors({ item: "Selected item is not available" });
-        setLoading(false);
-        return;
-      }
-      if ((Number(found.quantity) || 0) < q) {
-        setErrors({ quantity: `Only ${found.quantity} available` });
-        setLoading(false);
-        return;
+    if (res.data?.success) {
+      // After creating form, check whether backend already decremented inventory.
+      // If backend already handled inventory updates, don't patch again.
+      const afterItems = await Axios.get(`${API_URL}/items/get-items`);
+      const afterFound = afterItems.data?.items?.find((i) => i._id === found._id);
+
+      const originalQty = safeNumber(found.quantity);
+      const expectedQtyAfter = originalQty - q;
+      const backendDidDecrement = afterFound && safeNumber(afterFound.quantity) === expectedQtyAfter &&
+                                 (safeNumber(afterFound.price) === safeNumber(found.price) - total || !found.price);
+
+      if (!backendDidDecrement) {
+        // backend didn't decrement, so patch item ourselves
+        const newQty = Math.max(0, originalQty - q);
+        const newTotal = found.price - total; // prevents negative price
+        console.log("Total : ",total);
+        console.log("Found Price : ",found.price);
+        
+        console.log("New Total : ",newTotal);
+        
+        
+        try {
+          await Axios.patch(`${API_URL}/items/update-item`, {
+            itemId: found._id,
+            newQuantity: newQty,
+            newPrice: newTotal,
+            newIsAvailable: newQty > 0,
+            newUnitPrice: newQty ? newTotal / newQty : 0,
+          });
+        } catch (err) {
+          console.error("Failed to decrement item after form submit", err);
+        }
       }
 
-      const res = await Axios.post(`${API_URL}/forms/add-form`, {
-        shop,
-        item,
-        room: room || 0,
-        message,
-        quantity: q
-      });
-
-      if (res.data?.success) {
-        setShop("");
-        setItem("");
-        setRoom("");
-        setQuantity("");
-        setUnitPrice("");
-        setTotalPrice("");
-        setMessage("");
-        setSuccess(res.data.message || "Form submitted successfully!");
-        await fetchItems();
-      } else {
-        setErrors({ submit: res.data?.message || "Failed to submit form" });
-      }
-    } catch (err) {
-      const serverMsg = err?.response?.data?.message;
-      setErrors({ submit: serverMsg || "Failed to submit form" });
-    } finally {
-      setLoading(false);
+      // clear form and refresh local items
+      setShop("");
+      setItem("");
+      setRoom("");
+      setQuantity("");
+      setUnitPrice("");
+      setTotalPrice("");
+      setMessage("");
+      setSuccess(res.data.message || "Form submitted successfully!");
+      await fetchItems();
+    } else {
+      setErrors({ submit: res.data?.message || "Failed to submit form" });
     }
-  };
+  } catch (err) {
+    const serverMsg = err?.response?.data?.message;
+    setErrors({ submit: serverMsg || "Failed to submit form" });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const inputClass =
     "px-4 py-3 rounded-lg border border-green-200 focus:outline-none focus:ring-2 focus:ring-white bg-green-200 text-black placeholder-gray-600";

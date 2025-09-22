@@ -3,53 +3,29 @@ import Axios from "axios";
 import { FaEdit, FaTrash } from "react-icons/fa";
 
 function List() {
+  const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState("items");
   const [items, setItems] = useState([]);
   const [forms, setForms] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [addItemOpen, setAddItemOpen] = useState(false);
+  const [addData, setAddData] = useState({
+    name: "",
+    quantity: "",
+    unitPrice: "",
+    invoiceNumber: "",
+    message: "",
+  });
+  const [addErrors, setAddErrors] = useState({});
   const [editTarget, setEditTarget] = useState(null);
   const [editData, setEditData] = useState({});
+  const [editErrors, setEditErrors] = useState({});
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 
-  // Convert any value to number safely
   const safeNumber = (v) => {
-    if (v === undefined || v === null) return NaN;
     const n = Number(v);
-    return Number.isFinite(n) ? n : NaN;
-  };
-
-  // Normalize items
-  const normalizeItems = (rawItems) => {
-    return rawItems.map((i) => {
-      const quantity = safeNumber(i.quantity ?? i.qty ?? i.count ?? i.units ?? i.availableQuantity ?? i.amount);
-      const totalPrice = safeNumber(i.price ?? i.totalPrice ?? i.amount ?? i.total);
-      const unitPrice = !Number.isNaN(quantity) && quantity > 0 ? totalPrice / quantity : safeNumber(i.unitPrice ?? i.pricePerUnit ?? i.pricePerItem);
-      return {
-        ...i,
-        __parsed: {
-          quantity: Number.isNaN(quantity) ? null : quantity,
-          totalPrice: Number.isNaN(totalPrice) ? null : totalPrice,
-          unitPrice: Number.isNaN(unitPrice) ? null : unitPrice,
-        },
-      };
-    });
-  };
-
-  const normalizeForms = (rawForms) => {
-    return rawForms.map((f) => {
-      const quantity = safeNumber(f.quantity ?? f.qty ?? f.count);
-      const totalPrice = safeNumber(f.totalPrice ?? f.price ?? f.amount);
-      const unitPrice = !Number.isNaN(quantity) && quantity > 0 ? totalPrice / quantity : totalPrice;
-      return {
-        ...f,
-        __parsed: {
-          quantity: Number.isNaN(quantity) ? null : quantity,
-          totalPrice: Number.isNaN(totalPrice) ? null : totalPrice,
-          unitPrice: Number.isNaN(unitPrice) ? null : unitPrice,
-        },
-      };
-    });
+    return Number.isFinite(n) ? n : 0;
   };
 
   const fetchData = async () => {
@@ -59,8 +35,24 @@ function List() {
         Axios.get(`${API_URL}/items/get-items`),
         Axios.get(`${API_URL}/forms/get-forms`),
       ]);
-      setItems(normalizeItems(itemRes.data.items || []));
-      setForms(normalizeForms(formRes.data.forms || []));
+
+      const normalizedItems = (itemRes.data.items || []).map((i) => {
+        const quantity = safeNumber(i.quantity);
+        const unitPrice = safeNumber(i.price / i.quantity);
+        const totalPrice = safeNumber(i.price);
+        return { ...i, quantity, unitPrice, totalPrice, isAvailable: quantity > 0 };
+      });
+      console.log(itemRes.data);
+      
+      const normalizedForms = (formRes.data.forms || []).map((f) => {
+        const quantity = safeNumber(f.quantity);
+        const unitPrice = safeNumber(f.price / f.quantity);
+        const totalPrice = safeNumber(f.price);
+        return { ...f, quantity, unitPrice, totalPrice };
+      });
+
+      setItems(normalizedItems);
+      setForms(normalizedForms);
     } catch (err) {
       console.error(err);
       setItems([]);
@@ -74,175 +66,271 @@ function List() {
     fetchData();
   }, []);
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
+  const formatDateTime = (dateStr) => dateStr ? new Date(dateStr).toLocaleString("en-IN") : "-";
+
+  const toggleAvailable = async (itemId) => {
+    const idx = items.findIndex((it) => it._id === itemId);
+    if (idx === -1) return;
+    const current = items[idx];
+    const newStatus = !current.isAvailable;
+    setItems((prev) =>
+      prev.map((it) => (it._id === itemId ? { ...it, isAvailable: newStatus } : it))
+    );
+
     try {
-      if (deleteTarget.type === "item") {
-        await Axios.delete(`${API_URL}/items/delete-item`, { data: { itemId: deleteTarget.id } });
-      } else {
-        await Axios.delete(`${API_URL}/forms/delete-form`, { data: { formId: deleteTarget.id } });
-      }
-      setDeleteTarget(null);
-      fetchData();
+      await Axios.patch(`${API_URL}/items/update-item`, {
+        itemId,
+        newIsAvailable: newStatus,
+      });
     } catch (err) {
       console.error(err);
+      setItems((prev) =>
+        prev.map((it) => (it._id === itemId ? { ...it, isAvailable: current.isAvailable } : it))
+      );
     }
   };
 
-  const handleEdit = async () => {
-    if (!editTarget) return;
+  const validateAddData = () => {
+    const errs = {};
+    if (!addData.name?.trim()) errs.name = "Name required";
+    if (!safeNumber(addData.quantity) || safeNumber(addData.quantity) <= 0) errs.quantity = "Enter valid quantity";
+    if (!safeNumber(addData.unitPrice) || safeNumber(addData.unitPrice) <= 0) errs.unitPrice = "Enter valid unit price";
+    return errs;
+  };
+
+  const handleAddItem = async () => {
+    const errs = validateAddData();
+    setAddErrors(errs);
+    if (Object.keys(errs).length) return;
+
+    const quantity = safeNumber(addData.quantity);
+    const unitPrice = safeNumber(addData.unitPrice);
+    const totalPrice = quantity * unitPrice;
+
+    const tmpId = `tmp_${Date.now()}`;
+    const newItem = {
+      _id: tmpId,
+      name: addData.name.trim(),
+      quantity,
+      unitPrice,
+      totalPrice,
+      invoiceNumber: addData.invoiceNumber || "",
+      message: addData.message || "",
+      isAvailable: quantity > 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    setItems((p) => [newItem, ...p]);
+    setAddItemOpen(false);
+    setAddData({ name: "", quantity: "", unitPrice: "", invoiceNumber: "", message: "" });
+    setAddErrors({});
+
     try {
-      if (editTarget.type === "item") {
-        await Axios.patch(`${API_URL}/items/update-item`, { itemId: editTarget.id, ...editData });
-      } else {
-        await Axios.patch(`${API_URL}/forms/update-form`, { formId: editTarget.id, ...editData });
-      }
+      const res = await Axios.post(`${API_URL}/items/add-item`, {
+        name: newItem.name,
+        quantity,
+        price: totalPrice,
+        invoiceNumber: newItem.invoiceNumber,
+        message: newItem.message,
+        isAvailable: newItem.isAvailable,
+      });
+
+      if (res.data?.success && res.data.item) {
+        const added = res.data.item;
+        const quantity = safeNumber(added.quantity);
+        const unitPrice = safeNumber(added.price / quantity);
+        const totalPrice = safeNumber(added.price);
+        setItems((prev) => prev.map((it) => (it._id === tmpId ? { ...added, quantity, unitPrice, totalPrice } : it)));
+      } else fetchData();
+    } catch (err) {
+      console.error(err);
+      setItems((p) => p.filter((it) => it._id !== tmpId));
+    }
+  };
+
+  const openEdit = (item) => {
+    setEditTarget(item._id);
+    setEditData({
+      newName: item.name,
+      newQuantity: item.quantity,
+      newUnitPrice: item.unitPrice,
+      newInvoiceNumber: item.invoiceNumber || "",
+      newMessage: item.message || "",
+      newIsAvailable: item.isAvailable,
+    });
+    setEditErrors({});
+  };
+
+  const validateEditData = () => {
+    const errs = {};
+    if (!editData.newName?.trim()) errs.newName = "Name required";
+    if (!safeNumber(editData.newQuantity) || safeNumber(editData.newQuantity) < 0) errs.newQuantity = "Enter valid quantity";
+    if (!safeNumber(editData.newUnitPrice) || safeNumber(editData.newUnitPrice) < 0) errs.newUnitPrice = "Enter valid unit price";
+    return errs;
+  };
+
+  const handleEditSave = async () => {
+    const errs = validateEditData();
+    setEditErrors(errs);
+    if (Object.keys(errs).length) return;
+
+    const quantity = safeNumber(editData.newQuantity);
+    const unitPrice = safeNumber(editData.newUnitPrice);
+    const totalPrice = quantity * unitPrice;
+
+    try {
+      await Axios.patch(`${API_URL}/items/update-item`, {
+        itemId: editTarget,
+        newName: editData.newName.trim(),
+        newQuantity: quantity,
+        newUnitPrice: unitPrice,
+        newTotalPrice: totalPrice,
+        newInvoiceNumber: editData.newInvoiceNumber,
+        newMessage: editData.newMessage,
+        newIsAvailable: quantity > 0,
+      });
+
+      setItems((prev) =>
+        prev.map((it) => (it._id === editTarget ? { ...it, name: editData.newName.trim(), quantity, unitPrice, totalPrice, invoiceNumber: editData.newInvoiceNumber, message: editData.newMessage, isAvailable: quantity > 0 } : it))
+      );
       setEditTarget(null);
       setEditData({});
-      fetchData();
+      setEditErrors({});
     } catch (err) {
       console.error(err);
+      fetchData();
     }
   };
 
-  const formatDate = (dateStr) =>
-    dateStr
-      ? new Date(dateStr).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
-      : "-";
+  const confirmDelete = (entry, isForm = false) => {
+    setDeleteTarget({ ...entry, isForm, restore: false });
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+
+    const { _id, isForm, restore } = deleteTarget;
+
+    try {
+      if (!isForm) {
+        await Axios.delete(`${API_URL}/items/delete-item`, { data: { itemId: _id } });
+        setItems((p) => p.filter((it) => it._id !== _id));
+      } else {
+        const form = forms.find((f) => f._id === _id);
+        if (!form) return;
+
+        if (restore) {
+          const matchedItem = items.find((it) => it.name.toLowerCase() === form.item.toLowerCase());
+          if (matchedItem) {
+            const newQty = matchedItem.quantity + form.quantity;
+            const newTotal = newQty * matchedItem.unitPrice;
+            setItems((p) => p.map((it) => (it._id === matchedItem._id ? { ...it, quantity: newQty, totalPrice: newTotal, isAvailable: newQty > 0 } : it)));
+            await Axios.patch(`${API_URL}/items/update-item`, {
+              itemId: matchedItem._id,
+              newQuantity: newQty,
+              newTotalPrice: newTotal,
+              newIsAvailable: newQty > 0,
+            });
+          } else {
+            const tmpId = `tmp_${Date.now()}`;
+            const newItem = {
+              _id: tmpId,
+              name: form.item,
+              quantity: form.quantity,
+              unitPrice: form.unitPrice,
+              totalPrice: form.quantity * form.unitPrice,
+              message: `Restored from form ${form._id}`,
+              isAvailable: form.quantity > 0,
+              createdAt: new Date().toISOString(),
+            };
+            setItems((p) => [newItem, ...p]);
+            try {
+              await Axios.post(`${API_URL}/items/add-item`, {
+                name: newItem.name,
+                quantity: newItem.quantity,
+                price: newItem.totalPrice,
+                message: newItem.message,
+                isAvailable: newItem.isAvailable,
+              });
+            } catch (err) {
+              console.error(err);
+              setItems((p) => p.filter((it) => it._id !== tmpId));
+            }
+          }
+        }
+
+        await Axios.delete(`${API_URL}/forms/delete-form`, { data: { formId: _id } });
+        setForms((p) => p.filter((f) => f._id !== _id));
+      }
+
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error(err);
+      fetchData();
+      setDeleteTarget(null);
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto mt-10 p-6 bg-green-400 rounded-xl shadow-xl text-white">
-      <div className="flex justify-center mb-6">
-        <button
-          onClick={() => setTab("items")}
-          className={`px-6 py-2 rounded-l-lg font-semibold ${tab === "items" ? "bg-white text-green-600" : "bg-green-600"}`}
-        >
-          Items
-        </button>
-        <button
-          onClick={() => setTab("forms")}
-          className={`px-6 py-2 rounded-r-lg font-semibold ${tab === "forms" ? "bg-white text-green-600" : "bg-green-600"}`}
-        >
-          Forms
-        </button>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <button onClick={() => setTab("items")} className={`px-6 py-2 rounded-l-lg font-semibold ${tab === "items" ? "bg-white text-green-600" : "bg-green-600"}`}>Items</button>
+          <button onClick={() => setTab("forms")} className={`px-6 py-2 rounded-r-lg font-semibold ${tab === "forms" ? "bg-white text-green-600" : "bg-green-600"}`}>Forms</button>
+        </div>
+        {loading && <div className="animate-spin border-4 border-green-600 border-dashed w-12 h-12 rounded-full"></div>}
+        {tab === "items" && <button onClick={() => setAddItemOpen(true)} className="bg-white text-green-600 px-4 py-2 rounded-lg shadow-sm">+ Add Item</button>}
       </div>
 
-      {loading ? (
-        <p className="text-center text-lg">Loading...</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full bg-white text-green-700 rounded-lg overflow-hidden shadow-md">
-            <thead className="bg-green-600 text-white">
-              {tab === "items" ? (
-                <tr>
-                  <th className="p-3 text-left">Name</th>
-                  <th className="p-3">Quantity</th>
-                  <th className="p-3">Price/Item</th>
-                  <th className="p-3">Total Price</th>
-                  <th className="p-3">Invoice No</th>
-                  <th className="p-3">Date</th>
-                  <th className="p-3">Message</th>
-                  <th className="p-3">Actions</th>
-                </tr>
-              ) : (
-                <tr>
-                  <th className="p-3 text-left">Shop</th>
-                  <th className="p-3">Item</th>
-                  <th className="p-3">Qty</th>
-                  <th className="p-3">Room</th>
-                  <th className="p-3">Price/Item</th>
-                  <th className="p-3">Total Price</th>
-                  <th className="p-3">Date</th>
-                  <th className="p-3">Message</th>
-                  <th className="p-3">Actions</th>
-                </tr>
-              )}
-            </thead>
-            <tbody>
-              {tab === "items" &&
-                items.map((i) => {
-                  const { quantity, totalPrice, unitPrice } = i.__parsed;
-                  return (
-                    <tr key={i._id} className="border-b">
-                      <td className="p-3">{i.name || "-"}</td>
-                      <td className="p-3 text-center">{quantity ?? "—"}</td>
-                      <td className="p-3 text-center">{unitPrice != null ? `₹${unitPrice.toFixed(2)}` : "—"}</td>
-                      <td className="p-3 text-center">{totalPrice != null ? `₹${totalPrice.toFixed(2)}` : "—"}</td>
-                      <td className="p-3 text-center">{i.invoiceNumber || "-"}</td>
-                      <td className="p-3 text-center">{formatDate(i.createdAt)}</td>
-                      <td className="p-3">{i.message || "-"}</td>
-                      <td className="p-3 flex gap-3 justify-center">
-                        <FaEdit
-                          className="text-blue-500 cursor-pointer"
-                          onClick={() => {
-                            setEditTarget({ type: "item", id: i._id });
-                            setEditData({
-                              newName: i.name || "",
-                              newQuantity: quantity || "",
-                              newPrice: totalPrice || "",
-                              newInvoiceNumber: i.invoiceNumber || "",
-                              newMessage: i.message || "",
-                            });
-                          }}
-                        />
-                        <FaTrash className="text-red-500 cursor-pointer" onClick={() => setDeleteTarget({ type: "item", id: i._id })} />
-                      </td>
-                    </tr>
-                  );
-                })}
+      <ul className="space-y-4">
+        {(tab === "items" ? items : forms).map((entry) => {
+          const isFormTab = tab === "forms";
+          return (
+            <li key={entry._id} className="bg-white text-green-700 rounded-xl p-4 flex justify-between shadow-md">
+              <div>
+                <div className="text-lg font-semibold">{isFormTab ? entry.shopName || "Shop" : entry.name}</div>
+                <div>{isFormTab ? entry.item : entry.name}</div>
+                <div>Quantity: {entry.quantity}</div>
+                <div>Price/Item: ₹{entry.unitPrice?.toFixed(2) || 0}</div>
+                <div>Total: ₹{entry.totalPrice?.toFixed(2) || 0}</div>
+                <div className="text-sm text-gray-500">Date: {formatDateTime(entry.createdAt)}</div>
+                <div className="text-sm mt-1">{entry.message || "-"}</div>
+              </div>
+              <div className="flex flex-col gap-2">
+                {!isFormTab && (
+                  <button onClick={() => toggleAvailable(entry._id)} className={`px-3 py-1 rounded-full font-semibold shadow-sm ${entry.isAvailable ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
+                    {entry.isAvailable ? "Available" : "Unavailable"}
+                  </button>
+                )}
+                {!isFormTab && <button onClick={() => openEdit(entry)} className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-600 text-white hover:bg-blue-700"><FaEdit /> Edit</button>}
+                <button onClick={() => confirmDelete(entry, isFormTab)} className="flex items-center gap-2 px-3 py-1 rounded-full bg-red-600 text-white hover:bg-red-700">
+                  <FaTrash /> {isFormTab ? "Delete / Restore" : "Delete"}
+                </button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
 
-              {tab === "forms" &&
-                forms.map((f) => {
-                  const { quantity, totalPrice, unitPrice } = f.__parsed;
-                  return (
-                    <tr key={f._id} className="border-b">
-                      <td className="p-3">{f.shop || "-"}</td>
-                      <td className="p-3">{f.item || "-"}</td>
-                      <td className="p-3 text-center">{quantity ?? "—"}</td>
-                      <td className="p-3 text-center">{f.room || "-"}</td>
-                      <td className="p-3 text-center">{unitPrice != null ? `₹${unitPrice.toFixed(2)}` : "—"}</td>
-                      <td className="p-3 text-center">{totalPrice != null ? `₹${totalPrice.toFixed(2)}` : "—"}</td>
-                      <td className="p-3 text-center">{formatDate(f.createdAt)}</td>
-                      <td className="p-3">{f.message || "-"}</td>
-                      <td className="p-3 flex gap-3 justify-center">
-                        <FaEdit
-                          className="text-blue-500 cursor-pointer"
-                          onClick={() => {
-                            setEditTarget({ type: "form", id: f._id });
-                            setEditData({
-                              newShop: f.shop || "",
-                              newRoom: f.room || "",
-                              newItem: f.item || "",
-                              newQuantity: quantity || "",
-                              newMessage: f.message || "",
-                            });
-                          }}
-                        />
-                        <FaTrash className="text-red-500 cursor-pointer" onClick={() => setDeleteTarget({ type: "form", id: f._id })} />
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Delete Modal */}
-      {deleteTarget && (
-        <div className="fixed inset-0 bg-green-300 bg-opacity-50 flex justify-center items-center">
-          <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-sm">
-            <h3 className="text-xl font-semibold mb-4 text-red-600">Confirm Delete</h3>
-            <p className="mb-6 text-gray-700">
-              Are you sure you want to delete this {deleteTarget.type}?
-            </p>
-            <div className="flex justify-center gap-4">
-              <button onClick={handleDelete} className="bg-red-500 cursor-pointer text-white px-4 py-2 rounded-lg">
-                Delete
-              </button>
-              <button onClick={() => setDeleteTarget(null)} className="bg-gray-300 cursor-pointer px-4 py-2 rounded-lg">
-                Cancel
-              </button>
+      {/* Add / Edit / Delete Modals */}
+      {/* Add Item Modal */}
+      {addItemOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-lg">
+            <h3 className="text-xl font-semibold text-green-600 mb-3">Add New Item</h3>
+            <div className="flex flex-col gap-3">
+              <input type="text" placeholder="Name" value={addData.name} onChange={(e) => setAddData({ ...addData, name: e.target.value })} className="p-2 border rounded-lg text-black" />
+              {addErrors.name && <span className="text-red-600 text-sm">{addErrors.name}</span>}
+              <input type="number" placeholder="Quantity" value={addData.quantity} onChange={(e) => setAddData({ ...addData, quantity: e.target.value })} className="p-2 border rounded-lg text-black" />
+              {addErrors.quantity && <span className="text-red-600 text-sm">{addErrors.quantity}</span>}
+              <input type="number" placeholder="Unit Price" value={addData.unitPrice} onChange={(e) => setAddData({ ...addData, unitPrice: e.target.value })} className="p-2 border rounded-lg text-black" />
+              {addErrors.unitPrice && <span className="text-red-600 text-sm">{addErrors.unitPrice}</span>}
+              <input type="text" placeholder="Invoice Number" value={addData.invoiceNumber} onChange={(e) => setAddData({ ...addData, invoiceNumber: e.target.value })} className="p-2 border rounded-lg text-black" />
+              <textarea placeholder="Message" value={addData.message} onChange={(e) => setAddData({ ...addData, message: e.target.value })} className="p-2 border rounded-lg text-black" />
+            </div>
+            <div className="flex justify-end gap-3 mt-4">
+              <button onClick={() => setAddItemOpen(false)} className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg">Cancel</button>
+              <button onClick={handleAddItem} className="px-4 py-2 bg-green-600 text-white rounded-lg">Add</button>
             </div>
           </div>
         </div>
@@ -250,26 +338,42 @@ function List() {
 
       {/* Edit Modal */}
       {editTarget && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full">
-            <h3 className="text-xl font-semibold mb-4 text-green-600">Edit {editTarget.type}</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-lg">
+            <h3 className="text-xl font-semibold text-blue-600 mb-3">Edit Item</h3>
             <div className="flex flex-col gap-3">
-              {Object.keys(editData).map((key) => (
-                <input
-                  key={key}
-                  className="border p-2 rounded w-full"
-                  value={editData[key]}
-                  onChange={(e) => setEditData({ ...editData, [key]: e.target.value })}
-                />
-              ))}
+              <input type="text" value={editData.newName} onChange={(e) => setEditData({ ...editData, newName: e.target.value })} className="p-2 border rounded-lg text-black" />
+              {editErrors.newName && <span className="text-red-600 text-sm">{editErrors.newName}</span>}
+              <input type="number" value={editData.newQuantity} onChange={(e) => setEditData({ ...editData, newQuantity: e.target.value })} className="p-2 border rounded-lg text-black" />
+              {editErrors.newQuantity && <span className="text-red-600 text-sm">{editErrors.newQuantity}</span>}
+              <input type="number" value={editData.newUnitPrice} onChange={(e) => setEditData({ ...editData, newUnitPrice: e.target.value })} className="p-2 border rounded-lg text-black" />
+              {editErrors.newUnitPrice && <span className="text-red-600 text-sm">{editErrors.newUnitPrice}</span>}
+              <input type="text" value={editData.newInvoiceNumber} onChange={(e) => setEditData({ ...editData, newInvoiceNumber: e.target.value })} className="p-2 border rounded-lg text-black" />
+              <textarea value={editData.newMessage} onChange={(e) => setEditData({ ...editData, newMessage: e.target.value })} className="p-2 border rounded-lg text-black" />
             </div>
-            <div className="flex justify-end gap-4 mt-6">
-              <button onClick={handleEdit} className="bg-green-500 cursor-pointer text-white px-4 py-2 rounded-lg">
-                Save
-              </button>
-              <button onClick={() => setEditTarget(null)} className="bg-gray-300 cursor-pointer px-4 py-2 rounded-lg">
-                Cancel
-              </button>
+            <div className="flex justify-end gap-3 mt-4">
+              <button onClick={() => setEditTarget(null)} className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg">Cancel</button>
+              <button onClick={handleEditSave} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete / Restore Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-green-300 bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-black roundedcd-xl p-6 max-w-sm w-full shadow-lg">
+            <h3 className="text-red-600 font-semibold mb-2">Confirm {deleteTarget.isForm ? "Delete / Restore" : "Delete"}</h3>
+            <p>Are you sure you want to {deleteTarget.isForm ? "delete this form? You can restore the item below." : "delete this item?"}</p>
+            {deleteTarget.isForm && (
+              <div className="flex items-center gap-2 mt-2">
+                <input type="checkbox" checked={deleteTarget.restore} onChange={(e) => setDeleteTarget({ ...deleteTarget, restore: e.target.checked })} />
+                <label>Restore item quantity & price to inventory</label>
+              </div>
+            )}
+            <div className="flex justify-end gap-4 mt-4">
+              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">Cancel</button>
+              <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg">Delete</button>
             </div>
           </div>
         </div>

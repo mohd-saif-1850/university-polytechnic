@@ -7,18 +7,23 @@ export const createForm = async (req, res) => {
 
     if (!shop) return res.status(400).json({ success: false, message: "Shop Name is Required!" });
     if (!item) return res.status(400).json({ success: false, message: "Item Name is Required!" });
-
+    console.log("item : from form controlller trying : ",item);
+    
     const itemDoc = await ItemModel.findOne({ name: { $regex: `^${item.trim()}$`, $options: "i" } });
+    console.log("Item Doc : ",itemDoc);
+    
     if (!itemDoc) return res.status(404).json({ success: false, message: "Item not found" });
     if (!itemDoc.isAvailable) return res.status(400).json({ success: false, message: "Item not available" });
 
-    const qty = Number(quantity);
+    const qty = quantity;
     if (!qty || qty <= 0) return res.status(400).json({ success: false, message: "Invalid quantity" });
-    if ((Number(itemDoc.quantity) || 0) < qty)
+    if ((itemDoc.quantity || 0) < qty)
       return res.status(400).json({ success: false, message: `Only ${itemDoc.quantity} available` });
 
-    const unitPrice = Number(itemDoc.price) || 0;
-    const totalPrice = Number((unitPrice * qty).toFixed(2));
+    const unitPrice = itemDoc.price / itemDoc.quantity || 0;
+    console.log("Unit price from form controller : ",unitPrice);
+    
+    const totalPrice = (unitPrice * qty).toFixed(2);
 
     const newQty = Number(itemDoc.quantity) - qty;
     await ItemModel.findByIdAndUpdate(itemDoc._id, { quantity: newQty, isAvailable: newQty > 0 });
