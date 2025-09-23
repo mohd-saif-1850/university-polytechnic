@@ -20,7 +20,7 @@ export const createForm = async (req, res) => {
     if ((itemDoc.quantity || 0) < qty)
       return res.status(400).json({ success: false, message: `Only ${itemDoc.quantity} available` });
 
-    const unitPrice = itemDoc.price / itemDoc.quantity || 0;
+    const unitPrice = itemDoc.unitPrice;
     console.log("Unit price from form controller : ",unitPrice);
     
     const totalPrice = Number((unitPrice * qty).toFixed(2));
