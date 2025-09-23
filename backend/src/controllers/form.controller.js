@@ -23,7 +23,7 @@ export const createForm = async (req, res) => {
     const unitPrice = itemDoc.price / itemDoc.quantity || 0;
     console.log("Unit price from form controller : ",unitPrice);
     
-    const totalPrice = (unitPrice * qty).toFixed(2);
+    const totalPrice = Number((unitPrice * qty).toFixed(2));
 
     const newQty = Number(itemDoc.quantity) - qty;
     await ItemModel.findByIdAndUpdate(itemDoc._id, { quantity: newQty, isAvailable: newQty > 0 });

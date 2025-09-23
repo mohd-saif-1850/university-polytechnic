@@ -86,6 +86,8 @@ const handleSubmit = async (e) => {
     const resItems = await Axios.get(`${API_URL}/items/get-items`);
     const freshItems = resItems.data?.items || [];
     const found = freshItems.find((i) => String(i.name).toLowerCase() === String(item).toLowerCase());
+    console.log(found);
+    
     if (!found) {
       setErrors({ item: "Selected item not found" });
       setLoading(false);
@@ -114,8 +116,8 @@ const handleSubmit = async (e) => {
       room: room || 0,
       message,
       quantity: q,
-      price: perUnit,
-      totalPrice: total,
+      price: perUnit * q,
+      totalPrice: total * q,
     });
 
     if (res.data?.success) {

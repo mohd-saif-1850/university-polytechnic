@@ -110,7 +110,7 @@ function Item() {
         resetForm();
       } else {
         // Add new item
-        const totalPrice = qty * unitPrice;
+        const totalPrice = qty * price;
         await Axios.post(`${API_URL}/items/add-item`, {
           name,
           quantity: qty,
@@ -136,9 +136,9 @@ function Item() {
       await Axios.patch(`${API_URL}/items/update-item`, {
         itemId: selectedItem._id,
         newQuantity: pendingUpdate.qty,
-        newTotalPrice: pendingUpdate.qty * pendingUpdate.price,
+        newTotalPrice: pendingUpdate.qty * pendingUpdate.unitPrice,
         newInvoiceNumber: invoiceNumber,
-        newUnitPrice: pendingUpdate.price,
+        newUnitPrice: pendingUpdate.unitPrice,
       });
       showSuccess("Item updated successfully.");
       resetForm();
