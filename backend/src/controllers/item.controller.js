@@ -2,7 +2,7 @@ import { ItemModel } from "../models/item.model.js";
 
 export const createItem = async (req, res) => {
   try {
-    const { name, price, quantity, message, invoiceNumber, consumed, isAvailable } = req.body;
+    const { name, price, unitPrice, quantity, message, invoiceNumber, consumed, isAvailable } = req.body;
 
     if (!name) return res.status(400).json({ success: false, message: "Name is Required !" });
     if (price === undefined || price === null) return res.status(400).json({ success: false, message: "Price is Required !" });
@@ -13,7 +13,8 @@ export const createItem = async (req, res) => {
 
     const item = await ItemModel.create({
       name: name.trim(),
-      price: String(price),
+      price: Number(price),
+      unitPrice : Number(unitPrice),
       quantity: Number(quantity),
       invoiceNumber: invoiceNumber || "",
       message: message || "",

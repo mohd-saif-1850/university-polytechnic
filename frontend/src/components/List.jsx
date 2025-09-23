@@ -275,11 +275,11 @@ function List() {
     <div className="max-w-6xl mx-auto mt-10 p-6 bg-green-400 rounded-xl shadow-xl text-white">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <button onClick={() => setTab("items")} className={`px-6 py-2 rounded-l-lg font-semibold ${tab === "items" ? "bg-white text-green-600" : "bg-green-600"}`}>Items</button>
-          <button onClick={() => setTab("forms")} className={`px-6 py-2 rounded-r-lg font-semibold ${tab === "forms" ? "bg-white text-green-600" : "bg-green-600"}`}>Forms</button>
+          <button onClick={() => setTab("items")} className={`px-6 py-2 rounded-l-lg cursor-pointer font-semibold ${tab === "items" ? "bg-white text-green-600" : "bg-green-600"}`}>Items</button>
+          <button onClick={() => setTab("forms")} className={`px-6 py-2 rounded-r-lg cursor-pointer font-semibold ${tab === "forms" ? "bg-white text-green-600" : "bg-green-600"}`}>Forms</button>
         </div>
         {loading && <div className="animate-spin border-4 border-green-600 border-dashed w-12 h-12 rounded-full"></div>}
-        {tab === "items" && <button onClick={() => setAddItemOpen(true)} className="bg-white text-green-600 px-4 py-2 rounded-lg shadow-sm">+ Add Item</button>}
+        
       </div>
 
       <ul className="space-y-4">
@@ -298,12 +298,12 @@ function List() {
               </div>
               <div className="flex flex-col gap-2">
                 {!isFormTab && (
-                  <button onClick={() => toggleAvailable(entry._id)} className={`px-3 py-1 rounded-full font-semibold shadow-sm ${entry.isAvailable ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
+                  <button onClick={() => toggleAvailable(entry._id)} className={`px-3 py-1 cursor-pointer rounded-full font-semibold shadow-sm ${entry.isAvailable ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
                     {entry.isAvailable ? "Available" : "Unavailable"}
                   </button>
                 )}
-                {!isFormTab && <button onClick={() => openEdit(entry)} className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-600 text-white hover:bg-blue-700"><FaEdit /> Edit</button>}
-                <button onClick={() => confirmDelete(entry, isFormTab)} className="flex items-center gap-2 px-3 py-1 rounded-full bg-red-600 text-white hover:bg-red-700">
+                {!isFormTab && <button onClick={() => openEdit(entry)} className="flex items-center cursor-pointer gap-2 px-3 py-1 rounded-full bg-blue-600 text-white hover:bg-blue-700"><FaEdit /> Edit</button>}
+                <button onClick={() => confirmDelete(entry, isFormTab)} className="flex items-center cursor-pointer gap-2 px-3 py-1 rounded-full bg-red-600 text-white hover:bg-red-700">
                   <FaTrash /> {isFormTab ? "Delete / Restore" : "Delete"}
                 </button>
               </div>
@@ -312,48 +312,29 @@ function List() {
         })}
       </ul>
 
-      {/* Add / Edit / Delete Modals */}
-      {/* Add Item Modal */}
-      {addItemOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-lg">
-            <h3 className="text-xl font-semibold text-green-600 mb-3">Add New Item</h3>
-            <div className="flex flex-col gap-3">
-              <input type="text" placeholder="Name" value={addData.name} onChange={(e) => setAddData({ ...addData, name: e.target.value })} className="p-2 border rounded-lg text-black" />
-              {addErrors.name && <span className="text-red-600 text-sm">{addErrors.name}</span>}
-              <input type="number" placeholder="Quantity" value={addData.quantity} onChange={(e) => setAddData({ ...addData, quantity: e.target.value })} className="p-2 border rounded-lg text-black" />
-              {addErrors.quantity && <span className="text-red-600 text-sm">{addErrors.quantity}</span>}
-              <input type="number" placeholder="Unit Price" value={addData.unitPrice} onChange={(e) => setAddData({ ...addData, unitPrice: e.target.value })} className="p-2 border rounded-lg text-black" />
-              {addErrors.unitPrice && <span className="text-red-600 text-sm">{addErrors.unitPrice}</span>}
-              <input type="text" placeholder="Invoice Number" value={addData.invoiceNumber} onChange={(e) => setAddData({ ...addData, invoiceNumber: e.target.value })} className="p-2 border rounded-lg text-black" />
-              <textarea placeholder="Message" value={addData.message} onChange={(e) => setAddData({ ...addData, message: e.target.value })} className="p-2 border rounded-lg text-black" />
-            </div>
-            <div className="flex justify-end gap-3 mt-4">
-              <button onClick={() => setAddItemOpen(false)} className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg">Cancel</button>
-              <button onClick={handleAddItem} className="px-4 py-2 bg-green-600 text-white rounded-lg">Add</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Edit Modal */}
       {editTarget && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-lg">
+        <div className="fixed inset-0  bg-green-300 bg-opacity-30 flex items-center justify-center">
+          <div className="bg-white rounded-xl mt-10 p-6 max-w-md w-full shadow-lg">
             <h3 className="text-xl font-semibold text-blue-600 mb-3">Edit Item</h3>
             <div className="flex flex-col gap-3">
-              <input type="text" value={editData.newName} onChange={(e) => setEditData({ ...editData, newName: e.target.value })} className="p-2 border rounded-lg text-black" />
+              <label htmlFor="Name" className="text-black">Name : </label>
+              <input type="text" id="Name" value={editData.newName} onChange={(e) => setEditData({ ...editData, newName: e.target.value })} className="p-2 border rounded-lg text-black" />
               {editErrors.newName && <span className="text-red-600 text-sm">{editErrors.newName}</span>}
-              <input type="number" value={editData.newQuantity} onChange={(e) => setEditData({ ...editData, newQuantity: e.target.value })} className="p-2 border rounded-lg text-black" />
+              <label htmlFor="Quantity" className="text-black">Quantity : </label>
+              <input type="number" id="Quantity" value={editData.newQuantity} onChange={(e) => setEditData({ ...editData, newQuantity: e.target.value })} className="p-2 border rounded-lg text-black" />
               {editErrors.newQuantity && <span className="text-red-600 text-sm">{editErrors.newQuantity}</span>}
-              <input type="number" value={editData.newUnitPrice} onChange={(e) => setEditData({ ...editData, newUnitPrice: e.target.value })} className="p-2 border rounded-lg text-black" />
+              <label htmlFor="UnitPrice" className="text-black">Unit Price : </label>
+              <input type="number" id="UnitPrice" value={editData.newUnitPrice} onChange={(e) => setEditData({ ...editData, newUnitPrice: e.target.value })} className="p-2 border rounded-lg text-black" />
               {editErrors.newUnitPrice && <span className="text-red-600 text-sm">{editErrors.newUnitPrice}</span>}
-              <input type="text" value={editData.newInvoiceNumber} onChange={(e) => setEditData({ ...editData, newInvoiceNumber: e.target.value })} className="p-2 border rounded-lg text-black" />
-              <textarea value={editData.newMessage} onChange={(e) => setEditData({ ...editData, newMessage: e.target.value })} className="p-2 border rounded-lg text-black" />
+              <label htmlFor="Invoicenumber" className="text-black">Invoice Number : </label>
+              <input type="text" id="Invoicenumber" value={editData.newInvoiceNumber} onChange={(e) => setEditData({ ...editData, newInvoiceNumber: e.target.value })} className="p-2 border rounded-lg text-black" />
+              <label htmlFor="Comment" className="text-black">Comment : </label>
+              <textarea value={editData.newMessage} id="Comment" onChange={(e) => setEditData({ ...editData, newMessage: e.target.value })} className="p-2 border rounded-lg text-black" />
             </div>
             <div className="flex justify-end gap-3 mt-4">
-              <button onClick={() => setEditTarget(null)} className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg">Cancel</button>
-              <button onClick={handleEditSave} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Save</button>
+              <button onClick={() => setEditTarget(null)} className="px-4 py-2 bg-gray-300 cursor-pointer text-gray-700 rounded-lg">Cancel</button>
+              <button onClick={handleEditSave} className="px-4 py-2 bg-blue-600 text-white cursor-pointer rounded-lg">Save</button>
             </div>
           </div>
         </div>
@@ -361,19 +342,19 @@ function List() {
 
       {/* Delete / Restore Modal */}
       {deleteTarget && (
-        <div className="fixed inset-0 bg-green-300 bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-black roundedcd-xl p-6 max-w-sm w-full shadow-lg">
+        <div className="fixed inset-0 bg-green-300 bg-opacity-30 flex items-center justify-center">
+          <div className="bg-white roundedcd-xl p-6 max-w-sm w-full shadow-lg rounded-2xl">
             <h3 className="text-red-600 font-semibold mb-2">Confirm {deleteTarget.isForm ? "Delete / Restore" : "Delete"}</h3>
-            <p>Are you sure you want to {deleteTarget.isForm ? "delete this form? You can restore the item below." : "delete this item?"}</p>
+            <p className="text-black">Are you sure you want to {deleteTarget.isForm ? "delete this form? You can restore the item below." : "delete this item?"}</p>
             {deleteTarget.isForm && (
               <div className="flex items-center gap-2 mt-2">
-                <input type="checkbox" checked={deleteTarget.restore} onChange={(e) => setDeleteTarget({ ...deleteTarget, restore: e.target.checked })} />
-                <label>Restore item quantity & price to inventory</label>
+                <input type="checkbox" className="cursor-pointer" checked={deleteTarget.restore} onChange={(e) => setDeleteTarget({ ...deleteTarget, restore: e.target.checked })} />
+                <label className="text-black">Restore Item Quantity & Price to Inventory !</label>
               </div>
             )}
             <div className="flex justify-end gap-4 mt-4">
-              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">Cancel</button>
-              <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg">Delete</button>
+              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 bg-gray-200 cursor-pointer text-gray-700 rounded-lg">Cancel</button>
+              <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white cursor-pointer rounded-lg">Delete</button>
             </div>
           </div>
         </div>

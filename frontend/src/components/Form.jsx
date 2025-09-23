@@ -105,7 +105,7 @@ const handleSubmit = async (e) => {
     // determine per-unit price robustly
     const perUnit = found.price / found.quantity;
     const total = perUnit * q;
-    console.log(found.price, found.quantity);
+    console.log(found.price, found.quantity, total);
     
     // include unitPrice and price when creating the form so restore can use it
     const res = await Axios.post(`${API_URL}/forms/add-form`, {
@@ -132,7 +132,7 @@ const handleSubmit = async (e) => {
       if (!backendDidDecrement) {
         // backend didn't decrement, so patch item ourselves
         const newQty = Math.max(0, originalQty - q);
-        const newTotal = found.price - total; // prevents negative price
+        const newTotal = found.price - total;
         console.log("Total : ",total);
         console.log("Found Price : ",found.price);
         

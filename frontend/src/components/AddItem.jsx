@@ -110,10 +110,11 @@ function Item() {
         resetForm();
       } else {
         // Add new item
-        const totalPrice = qty * price;
+        const totalPrice = qty * unitPrice;
         await Axios.post(`${API_URL}/items/add-item`, {
           name,
           quantity: qty,
+          unitPrice : totalPrice / qty,
           price: totalPrice,
           invoiceNumber,
           message,
