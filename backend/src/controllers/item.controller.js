@@ -71,8 +71,9 @@ export const updateItem = async (req, res) => {
 
     if (newPrice !== undefined) update.price = String(newPrice);
     else if (price !== undefined) update.price = String(price);
-
+    
     if (newUnitPrice !== undefined) update.unitPrice = String(newUnitPrice);
+    else if (unitPrice !== undefined) update.unitPrice = Number(unitPrice);
 
     if (newQuantity !== undefined) update.quantity = Number(newQuantity);
     else if (quantity !== undefined) update.quantity = Number(quantity);
