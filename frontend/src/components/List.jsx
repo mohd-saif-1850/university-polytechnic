@@ -46,8 +46,8 @@ function List() {
       
       const normalizedForms = (formRes.data.forms || []).map((f) => {
         const quantity = safeNumber(f.quantity);
-        const unitPrice = safeNumber(f.price / f.quantity);
-        const totalPrice = safeNumber(f.price);
+        const unitPrice = safeNumber(f.price);
+        const totalPrice = safeNumber(f.totalPrice);
         return { ...f, quantity, unitPrice, totalPrice };
       });
 

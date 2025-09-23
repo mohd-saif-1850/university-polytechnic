@@ -53,8 +53,8 @@ function Form() {
     
     const totalItemPrice = Number(found.price) || 0;
     const itemTotalQty = Number(found.quantity) || 1;
-    const perUnit = itemTotalQty > 0 ? totalItemPrice / itemTotalQty : totalItemPrice;
-    setUnitPrice(perUnit.toFixed(2));
+     const perUnit = Number(found.unitPrice) || 0;
+     setUnitPrice(perUnit.toFixed(2));
     const q = Number(quantity) || 0;
     setTotalPrice(q > 0 ? (perUnit * q).toFixed(2) : "");
   }, [item, quantity, itemsList]);
@@ -105,9 +105,8 @@ const handleSubmit = async (e) => {
     }
     
     // determine per-unit price robustly
-    const perUnit = found.price / found.quantity;
+    const perUnit = Number(found.unitPrice) || 0;
     const total = perUnit * q;
-    console.log(found.price, found.quantity, total);
     
     // include unitPrice and price when creating the form so restore can use it
     const res = await Axios.post(`${API_URL}/forms/add-form`, {
@@ -116,8 +115,8 @@ const handleSubmit = async (e) => {
       room: room || 0,
       message,
       quantity: q,
-      price: perUnit * q,
-      totalPrice: total * q,
+      price: perUnit,
+      totalPrice: total,
     });
 
     if (res.data?.success) {
