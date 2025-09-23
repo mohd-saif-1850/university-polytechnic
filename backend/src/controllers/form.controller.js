@@ -20,10 +20,10 @@ export const createForm = async (req, res) => {
     if ((itemDoc.quantity || 0) < qty)
       return res.status(400).json({ success: false, message: `Only ${itemDoc.quantity} available` });
 
-    const unitPrice = itemDoc.unitPrice;
+    // const unitPrice = itemDoc.unitPrice;
     console.log("Unit price from form controller : ",unitPrice);
     
-    const totalPrice = Number((unitPrice * qty).toFixed(2));
+    // const totalPrice = Number((unitPrice * qty).toFixed(2));
 
     const newQty = Number(itemDoc.quantity) - qty;
     await ItemModel.findByIdAndUpdate(itemDoc._id, { quantity: newQty, isAvailable: newQty > 0 });
@@ -32,9 +32,9 @@ export const createForm = async (req, res) => {
       shop,
       room: Number(room) || 0,
       item: itemDoc.name,
-      price: unitPrice,
+      price: itemDoc.unitPrice,
       quantity: qty,
-      totalPrice,
+      totalPrice : itemDoc.unitPrice * qty,
       isAvailable: newQty > 0,
       message: message || ""
     });
