@@ -40,9 +40,8 @@ function List() {
         const quantity = safeNumber(i.quantity);
         const unitPrice = safeNumber(i.price / i.quantity);
         const totalPrice = safeNumber(i.price);
-        return { ...i, quantity, unitPrice, totalPrice, isAvailable: quantity > 0 };
+        return { ...i, quantity, unitPrice, totalPrice, isAvailable: i.quantity > 0 && i.isAvailable };
       });
-      console.log(itemRes.data);
       
       const normalizedForms = (formRes.data.forms || []).map((f) => {
         const quantity = safeNumber(f.quantity);
@@ -184,7 +183,7 @@ function List() {
         newName: editData.newName.trim(),
         newQuantity: quantity,
         newUnitPrice: unitPrice,
-        newTotalPrice: totalPrice,
+        newPrice: quantity * unitPrice,
         newInvoiceNumber: editData.newInvoiceNumber,
         newMessage: editData.newMessage,
         newIsAvailable: quantity > 0,
@@ -279,38 +278,86 @@ function List() {
           <button onClick={() => setTab("forms")} className={`px-6 py-2 rounded-r-lg cursor-pointer font-semibold ${tab === "forms" ? "bg-white text-green-600" : "bg-green-600"}`}>Forms</button>
         </div>
         {loading && <div className="animate-spin border-4 border-green-600 border-dashed w-12 h-12 rounded-full"></div>}
-        
       </div>
 
       <ul className="space-y-4">
-        {(tab === "items" ? items : forms).map((entry) => {
-          const isFormTab = tab === "forms";
-          return (
-            <li key={entry._id} className="bg-white text-green-700 rounded-xl p-4 flex justify-between shadow-md">
-              <div>
-                <div className="text-lg font-semibold">{isFormTab ? entry.shopName || "Shop" : entry.name}</div>
-                <div>{isFormTab ? entry.item : entry.name}</div>
-                <div>Quantity: {entry.quantity}</div>
-                <div>Price/Item: ₹{entry.unitPrice?.toFixed(2) || 0}</div>
-                <div>Total: ₹{entry.totalPrice?.toFixed(2) || 0}</div>
-                <div className="text-sm text-gray-500">Date: {formatDateTime(entry.createdAt)}</div>
-                <div className="text-sm mt-1">{entry.message || "-"}</div>
-              </div>
-              <div className="flex flex-col gap-2">
-                {!isFormTab && (
-                  <button onClick={() => toggleAvailable(entry._id)} className={`px-3 py-1 cursor-pointer rounded-full font-semibold shadow-sm ${entry.isAvailable ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
-                    {entry.isAvailable ? "Available" : "Unavailable"}
-                  </button>
-                )}
-                {!isFormTab && <button onClick={() => openEdit(entry)} className="flex items-center cursor-pointer gap-2 px-3 py-1 rounded-full bg-blue-600 text-white hover:bg-blue-700"><FaEdit /> Edit</button>}
-                <button onClick={() => confirmDelete(entry, isFormTab)} className="flex items-center cursor-pointer gap-2 px-3 py-1 rounded-full bg-red-600 text-white hover:bg-red-700">
-                  <FaTrash /> {isFormTab ? "Delete / Restore" : "Delete"}
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+  {loading ? (
+    <li className="bg-white text-green-700 rounded-xl p-4 flex justify-center shadow-md">
+      <div className="text-center">
+        <div className="text-lg font-semibold">Loading...</div>
+        <div className="text-sm text-gray-500">Fetching data, please wait.</div>
+      </div>
+    </li>
+  ) : (tab === "items" ? items : forms).length === 0 ? (
+    <li className="bg-white text-green-700 rounded-xl p-4 flex justify-center shadow-md">
+      <div className="text-center">
+        <div className="text-lg font-semibold">
+          {tab === "items" ? "No items available" : "No forms available"}
+        </div>
+        <div className="text-sm text-gray-500">
+          {tab === "items"
+            ? "Please add a new item to get started."
+            : "Forms will appear here once they are created."}
+        </div>
+      </div>
+    </li>
+  ) : (
+    (tab === "items" ? items : forms).map((entry) => {
+      const isFormTab = tab === "forms";
+      return (
+        <li
+          key={entry._id}
+          className="bg-white text-green-700 rounded-xl p-4 flex justify-between shadow-md"
+        >
+          <div>
+            <div className="text-lg font-semibold">
+            {isFormTab ? entry.shop || "-" : ""}
+            </div>
+            <div> {isFormTab ? entry.item || "Untitled Form" : entry.name}</div>
+            <div>Quantity: {entry.quantity}</div>
+            <div>Price/Item: ₹{entry.unitPrice?.toFixed(2) || 0}</div>
+            <div>Total: ₹{entry.totalPrice?.toFixed(2) || 0}</div>
+            <div>Invoice No: {entry.invoiceNumber || 0}</div>
+            <div className="text-sm text-gray-500">
+              Date: {formatDateTime(entry.createdAt)}
+            </div>
+            <div className="text-sm mt-1">{entry.message || "-"}</div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {!isFormTab && (
+              <button
+                onClick={() => toggleAvailable(entry._id)}
+                className={`px-3 py-1 cursor-pointer rounded-full font-semibold shadow-sm ${
+                  entry.isAvailable
+                    ? "bg-green-600 text-white"
+                    : "bg-red-600 text-white"
+                }`}
+              >
+                {entry.isAvailable ? "Available" : "Unavailable"}
+              </button>
+            )}
+            {!isFormTab && (
+              <button
+                onClick={() => openEdit(entry)}
+                className="flex items-center cursor-pointer gap-2 px-3 py-1 rounded-full bg-blue-600 text-white hover:bg-blue-700"
+              >
+                <FaEdit /> Edit
+              </button>
+            )}
+            <button
+              onClick={() => confirmDelete(entry, isFormTab)}
+              className="flex items-center cursor-pointer gap-2 px-3 py-1 rounded-full bg-red-600 text-white hover:bg-red-700"
+            >
+              <FaTrash /> Delete
+            </button>
+          </div>
+        </li>
+      );
+    })
+  )}
+</ul>
+
 
       {/* Edit Modal */}
       {editTarget && (
@@ -344,14 +391,8 @@ function List() {
       {deleteTarget && (
         <div className="fixed inset-0 bg-green-300 bg-opacity-30 flex items-center justify-center">
           <div className="bg-white roundedcd-xl p-6 max-w-sm w-full shadow-lg rounded-2xl">
-            <h3 className="text-red-600 font-semibold mb-2">Confirm {deleteTarget.isForm ? "Delete / Restore" : "Delete"}</h3>
-            <p className="text-black">Are you sure you want to {deleteTarget.isForm ? "delete this form? You can restore the item below." : "delete this item?"}</p>
-            {deleteTarget.isForm && (
-              <div className="flex items-center gap-2 mt-2">
-                <input type="checkbox" className="cursor-pointer" checked={deleteTarget.restore} onChange={(e) => setDeleteTarget({ ...deleteTarget, restore: e.target.checked })} />
-                <label className="text-black">Restore Item Quantity & Price to Inventory !</label>
-              </div>
-            )}
+            <h3 className="text-red-600 font-semibold mb-2">Confirm Delete</h3>
+            <p className="text-black">Are you sure you want to Delete !</p>
             <div className="flex justify-end gap-4 mt-4">
               <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 bg-gray-200 cursor-pointer text-gray-700 rounded-lg">Cancel</button>
               <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white cursor-pointer rounded-lg">Delete</button>
