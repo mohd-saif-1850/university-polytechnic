@@ -1,14 +1,20 @@
 import mongoose, { Schema } from "mongoose";
 
 const itemSchema = new Schema({
-  name: { type: String, required: true },
-  price: { type: Number, required: true },
-  quantity: { type: Number, required: true },
-  unitPrice : { type : Number },
-  isAvailable: { type: Boolean, default: true },
-  invoiceNumber: { type: String },
-  consumed: { type: Boolean, default: false },
-  message: { type: String, default: '' }
+  name: {
+   type: String,
+   required: true 
+  },
+  code: {
+    type: String
+  },
+  specification: {
+    type:String
+  },
+  consumable: {
+    type: Boolean,
+    default: true
+  }
 }, { timestamps: true });
 
-export const ItemModel = mongoose.model("Item", itemSchema);
+export const Item = mongoose.model("Item", itemSchema);

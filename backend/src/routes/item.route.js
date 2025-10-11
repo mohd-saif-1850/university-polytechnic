@@ -1,11 +1,17 @@
 import { Router } from "express";
-import { createItem, deleteItem, getAllItems, updateItem } from "../controllers/item.controller.js";
+import { consumableItems, createItem, deleteItem, getAllItems, getItem, nonConsumableItems, searchItems, updateItem} from "../controllers/item.controller.js";
 
 const router = Router();
 
 router.post("/add-item", createItem);
-router.delete("/delete-item", deleteItem);
-router.patch("/update-item", updateItem);
-router.get("/get-items", getAllItems);
+router.patch("/update-item",updateItem)
+router.delete("/delete-item",deleteItem)
+
+router.get("/get-item", getItem);
+router.get("/get-all-items",getAllItems)
+router.get("/search-items",searchItems)
+
+router.get("/consumable-items",consumableItems)
+router.get("/non-consumable-items",nonConsumableItems)
 
 export default router;

@@ -1,107 +1,186 @@
-import { ItemModel } from "../models/item.model.js";
+import { Item } from "../models/item.model.js";
 
-export const createItem = async (req, res) => {
-  try {
-    const { name, price, unitPrice, quantity, message, invoiceNumber, consumed, isAvailable } = req.body;
+const createItem = async (req,res) => {
+  const {name,code,specification,consumable} = req.body
 
-    if (!name) return res.status(400).json({ success: false, message: "Name is Required !" });
-    if (price === undefined || price === null) return res.status(400).json({ success: false, message: "Price is Required !" });
-    if (quantity === undefined || quantity === null) return res.status(400).json({ success: false, message: "Quantity is Required !" });
-
-    const existingItem = await ItemModel.findOne({ name: name.trim() });
-    if (existingItem) return res.status(400).json({ success: false, message: `Item with Name "${name}" Already Exists !` });
-
-    const item = await ItemModel.create({
-      name: name.trim(),
-      price: Number(price),
-      unitPrice : Number(unitPrice),
-      quantity: Number(quantity),
-      invoiceNumber: invoiceNumber || "",
-      message: message || "",
-      consumed: consumed === undefined ? false : Boolean(consumed),
-      isAvailable: isAvailable === undefined ? true : Boolean(isAvailable),
-    });
-
-    return res.status(201).json({ success: true, item, message: `${item.name} Item Created Successfully !` });
-  } catch (err) {
-    console.error("createItem error:", err);
-    return res.status(500).json({ success: false, message: "Server Failed to Create Item !" });
+  if (!name) {
+    return res.status(400).json({error: "Item Name is Required !"})
   }
-};
 
-export const getAllItems = async (req, res) => {
-  try {
-    const items = await ItemModel.find().sort({ createdAt: -1 });
-    return res.status(200).json({ success: true, items });
-  } catch (err) {
-    console.error("getAllItems error:", err);
-    return res.status(500).json({ success: false, message: "Server error fetching items" });
+  const create = await Item.create({
+    name,
+    code : code ? code : 0,
+    specification : specification ? specification : "No Specification",
+    consumable
+  })
+
+  if (!create) {
+    return res.status(500).json({error : "Server Failed to Create the Item !"})
   }
-};
 
-export const deleteItem = async (req, res) => {
-  try {
-    const { itemId } = req.body;
-    if (!itemId) return res.status(400).json({ success: false, message: "Item ID Required !" });
+  return res.status(200).json({
+    success: true,
+    create,
+    message: "Item Created Successfully !"
+  })
+}
 
-    const deleted = await ItemModel.findByIdAndDelete(itemId);
-    if (!deleted) return res.status(404).json({ success: false, message: "Item not found" });
+const getItem = async (req,res) => {
+    const {name,id} = req.body
 
-    return res.status(200).json({ success: true, message: "Item Deleted Successfully !" });
-  } catch (err) {
-    console.error("deleteItem error:", err);
-    return res.status(500).json({ success: false, message: "Server Failed to Delete a Item  !" });
-  }
-};
-
-export const updateItem = async (req, res) => {
-  try {
-    const {
-      itemId,
-      newName, newPrice, newQuantity, newInvoiceNumber, newUnitPrice , newMessage, newConsumable, newIsAvailable,
-      name, price, quantity, invoiceNumber, unitPrice, message, consumable, consumed, isAvailable, available
-    } = req.body;
-
-    if (!itemId) return res.status(400).json({ success: false, message: "Item ID Required !" });
-
-    const update = {};
-
-    if (newName !== undefined) update.name = newName;
-    else if (name !== undefined) update.name = name;
-
-    if (newPrice !== undefined) update.price = String(newPrice);
-    else if (price !== undefined) update.price = String(price);
-    
-    if (newUnitPrice !== undefined) update.unitPrice = Number(newUnitPrice);
-    else if (unitPrice !== undefined) update.unitPrice = Number(unitPrice);
-
-    if (newQuantity !== undefined) update.quantity = Number(newQuantity);
-    else if (quantity !== undefined) update.quantity = Number(quantity);
-
-    if (newInvoiceNumber !== undefined) update.invoiceNumber = newInvoiceNumber;
-    else if (invoiceNumber !== undefined) update.invoiceNumber = invoiceNumber;
-
-    if (newMessage !== undefined) update.message = newMessage;
-    else if (message !== undefined) update.message = message;
-
-    if (newConsumable !== undefined) update.consumed = Boolean(newConsumable);
-    else if (consumable !== undefined) update.consumed = Boolean(consumable);
-    else if (consumed !== undefined) update.consumed = Boolean(consumed);
-
-    if (newIsAvailable !== undefined) update.isAvailable = Boolean(newIsAvailable);
-    else if (isAvailable !== undefined) update.isAvailable = Boolean(isAvailable);
-    else if (available !== undefined) update.isAvailable = Boolean(available);
-
-    if (Object.keys(update).length === 0) {
-      return res.status(400).json({ success: false, message: "Nothing to update !" });
+    if (!(name || id)) {
+        return res.status(400).json({error: "Name or Id of an Item is Required !"})
     }
 
-    const updated = await ItemModel.findByIdAndUpdate(itemId, update, { new: true });
-    if (!updated) return res.status(404).json({ success: false, message: "Item not found!" });
+    const item = await Item.findOne({
+        $or : [
+            {name},
+            {_id: id}
+        ]
+    })
 
-    return res.status(200).json({ success: true, update: updated, message: "Item Updated Successfully !" });
-  } catch (err) {
-    console.error("updateItem error:", err);
-    return res.status(500).json({ success: false, message: "Server Failed to Update Item Fields !" });
-  }
+    if (!item) {
+        return res.status(501).json({error : "Server Failed to Fetched the Item -- Or Item Not Found !"})
+    }
+
+    return res.status(200).json({
+        success: true,
+        item,
+        message: "Item Fetched Successfully !"
+    })
+}
+
+const getAllItems = async (req,res) => {
+    const allItems = await Item.find()
+
+    if (!allItems || allItems.length == 0) {
+        return res.status(404).json({error : "No Item Found !"})
+    }
+
+    return res.status(200).json({
+        success:true,
+        allItems,
+        message: "Items Fetched Successfully !"
+    })
+}
+
+const searchItems = async (req,res) => {
+    const {name} = req.body
+
+    if (!name) {
+        return res.status(400).json({error: "Please Enter the Name of Item !"})
+    }
+
+    const items = await Item.find({
+        name: { $regex: name, $options: "i" }
+    })
+
+    if (!items || items.length == 0) {
+        return res.status(404).json({error : "No Item Found !"})
+    }
+
+    return res.status(200).json({
+        success: true,
+        items,
+        message: "Items Fetched Successfully !"
+    })
+}
+
+const updateItem = async (req,res) => {
+    const {name,id,code,specification,consumable} = req.body
+
+    if (!(name || id)) {
+        return res.status(400).json({error: "Name or Id of an Item is Required !"})
+    }
+
+    const updateData = {}
+
+    if (name) updateData.name = name
+    if (code !== undefined) updateData.code = code
+    if (specification) updateData.specification = specification
+    if (typeof consumable === "boolean") updateData.consumable = consumable
+
+    if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({error: "No Fields Provided to Update !"})
+    }
+
+    const item = await Item.findOneAndUpdate(
+        {
+            $or : [
+                {name},
+                {_id: id}
+            ]
+        },
+        updateData,
+        {new: true, runValidators: true}
+    )
+
+    if (!item) {
+        return res.status(404).json({error : "Item Not Found !"})
+    }
+
+    return res.status(200).json({
+        success: true,
+        item,
+        message: "Item Updated Successfully !"
+    })
+}
+
+const deleteItem = async (req,res) => {
+    const {name, id} = req.body
+
+    if (!(name || id )) {
+        return res.status(404).json({error : "Please Enter Name or Id of an Item !"})
+    }
+
+    const delItem = await Item.findOneAndDelete({
+        $or : [
+            {name},
+            {_id : id}
+        ]
+    },{
+        new: true
+    })
+
+    if (!delItem) {
+        return res.status(500).json({error : "Server Failed to Delete an Item -- Or Item Not Found !"})
+    }
+
+    return res.status(200).json({
+        success: true,
+        delItem,
+        message : "Item deleted Successfully !"
+    })
+}
+
+const consumableItems = async (req,res) => {
+    const item = await Item.find({consumable : true})
+
+    if (!item || item.length == 0) {
+        return res.status(404).json({error : "No Consumable Items Found !"})
+    }
+
+    return res.status(200).json({
+        success: true,
+        item,
+        message: "Consumable Items Fetched Successfully !"
+    })
+}
+
+const nonConsumableItems = async (req,res) => {
+    const item = await Item.find({ consumable : false})
+
+    if (!item || item.length == 0) {
+        return res.status(404).json({error : "No Non-Consumable Items Found !"})
+    }
+
+    return res.status(200).json({
+        success: true,
+        item,
+        message: "Non-Consumable Items Fetched Successfully !"
+    })
+}
+
+export {createItem, getItem, getAllItems, searchItems, updateItem, deleteItem,
+    consumableItems, nonConsumableItems
 };

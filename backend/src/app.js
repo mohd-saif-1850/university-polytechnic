@@ -1,4 +1,3 @@
-// backend/src/app.js
 import express from "express";
 import cors from "cors";
 
@@ -9,13 +8,12 @@ app.use(express.json());
 
 const allowedOrigins = [
   process.env.CORS_ORIGIN,
-  "https://university-polytechnic-w6k1.vercel.app",
   "http://localhost:5173"
 ].filter(Boolean);
 
 app.use(
   cors({
-    origin: allowedOrigins,   // 👈 simpler: cors will handle array check
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })
@@ -28,11 +26,9 @@ app.get("/", (req, res) => {
 
 // Routes
 import itemRouter from "./routes/item.route.js";
-import formRouter from "./routes/form.route.js";
-import consumedRouter from "./routes/consumed.route.js";
+import firmRouter from "./routes/firm.route.js";
 
-app.use("/api/v1/items", itemRouter);
-app.use("/api/v1/forms", formRouter);
-app.use("/api/v1", consumedRouter);
+app.use("/api/v2/items", itemRouter);
+app.use("/api/v2/firms", firmRouter);
 
 export default app;
